@@ -1,22 +1,22 @@
 # Copyright (c) Microsoft Corporation. All rights reserved.
 # Licensed under the MIT License.
-
+import json
 import sys
 import traceback
 from datetime import datetime
 
-from aiohttp import web
-from aiohttp.web import Request, Response, json_response
+
 from botbuilder.core import (
     BotFrameworkAdapterSettings,
     TurnContext,
     BotFrameworkAdapter,
 )
-from botbuilder.core.integration import aiohttp_error_middleware
+
 from botbuilder.schema import Activity, ActivityTypes
 
 from bot import MyBot
 from config import DefaultConfig
+from flask import Flask, Response, request
 
 CONFIG = DefaultConfig()
 
@@ -59,29 +59,34 @@ ADAPTER.on_turn_error = on_error
 # Create the Bot
 BOT = MyBot()
 
+app = Flask(__name__)
+
 
 # Listen for incoming requests on /api/messages
-async def messages(req: Request) -> Response:
+@app.route("/api/messages", methods=["POST"])
+async def messages() -> Response:
     # Main bot message handler.
-    if "application/json" in req.headers["Content-Type"]:
-        body = await req.json()
+    if "application/json" in request.headers["Content-Type"]:
+        body = request.json
     else:
         return Response(status=415)
 
     activity = Activity().deserialize(body)
-    auth_header = req.headers["Authorization"] if "Authorization" in req.headers else ""
+    auth_header = request.headers["Authorization"] if "Authorization" in request.headers else ""
 
     response = await ADAPTER.process_activity(activity, auth_header, BOT.on_turn)
     if response:
-        return json_response(data=response.body, status=response.status)
+        return app.response_class(
+            response=json.dumps(response.body),
+            status=response.status,
+            mimetype='application/json'
+        )
+
     return Response(status=201)
 
 
-APP = web.Application(middlewares=[aiohttp_error_middleware])
-APP.router.add_post("/api/messages", messages)
-
 if __name__ == "__main__":
     try:
-        web.run_app(APP, host="0.0.0.0", port=CONFIG.PORT)
+        app.run(host="0.0.0.0", port=CONFIG.PORT, debug=True)
     except Exception as error:
         raise error
