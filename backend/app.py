@@ -1,5 +1,3 @@
-# Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License.
 import json
 import sys
 import traceback
@@ -28,9 +26,6 @@ ADAPTER = BotFrameworkAdapter(SETTINGS)
 
 # Catch-all for errors.
 async def on_error(context: TurnContext, error: Exception):
-    # This check writes out errors to console log .vs. app insights.
-    # NOTE: In production environment, you should consider logging this to Azure
-    #       application insights.
     print(f"\n [on_turn_error] unhandled error: {error}", file=sys.stderr)
     traceback.print_exc()
 
